@@ -88,7 +88,7 @@ final case class Cifar100(trainBuffer: MappedByteBuffer, testBuffer: MappedByteB
     }(collection.breakOut(mutable.ArraySeq.canBuildFrom))
     Random.shuffle(batches).iterator.map {
       case (coarseClass, batchIndicies) =>
-        coarseClass -> loadBatch(batchSize, batchIndicies)
+        coarseClass -> loadBatch(batchIndicies)
     }
   }
 
@@ -104,11 +104,11 @@ final case class Cifar100(trainBuffer: MappedByteBuffer, testBuffer: MappedByteB
 
   def epoch(batchSize: Int): Iterator[Batch] = {
     Random.shuffle[Int, IndexedSeq](0 until numberOfTestSamples).grouped(batchSize).map { batchIndices =>
-      loadBatch(batchSize, batchIndices)
+      loadBatch(batchIndices)
     }
   }
 
-  private def loadBatch(batchSize: GlobalFineClass, batchIndices: IndexedSeq[GlobalFineClass]): Batch = {
+  private def loadBatch(batchIndices: IndexedSeq[GlobalFineClass]): Batch = {
     import org.nd4s.Implicits._
     val (coarseClasses, localFineClasses, pixels) = (for (trainImageIndex <- batchIndices) yield {
       val offset = trainImageIndex * NumberOfBytesPerSample
@@ -129,7 +129,7 @@ final case class Cifar100(trainBuffer: MappedByteBuffer, testBuffer: MappedByteB
     Batch(
       batchOneHotEncoding(coarseClasses, NumberOfCoarseClasses),
       batchOneHotEncoding(localFineClasses, NumberOfFineClassesPerCoarseClass),
-      pixels.toNDArray.reshape(batchSize, NumberOfChannels, Width, Height)
+      pixels.toNDArray
     )
   }
 }
@@ -142,7 +142,9 @@ object Cifar100 {
     epoch.next()
   }
 
-  final case class Batch(coarseClasses: INDArray, localFineClasses: INDArray, pixels: INDArray)
+  final case class Batch(coarseClasses: INDArray, localFineClasses: INDArray, pixels2d: INDArray) {
+    def pixels = pixels2d.reshape(pixels2d.rows(), NumberOfChannels, Width, Height)
+  }
 
   val Width = 32
 
